@@ -79,6 +79,37 @@ function RoutePage({
   const [comment, setComment] = useState('')
 
   const completedTasks = tasks.filter((task) => task.completed).length
+  const [taskAnswers, setTaskAnswers] = useState({})
+const [submittedTasks, setSubmittedTasks] = useState({})
+
+const updateTaskAnswer = (taskId, value) => {
+  setTaskAnswers((current) => ({
+    ...current,
+    [taskId]: value,
+  }))
+}
+
+const submitTask = (taskId) => {
+  const answer = taskAnswers[taskId]?.trim()
+
+  if (!answer) {
+    alert('Сначала напиши ответ на задание.')
+    return
+  }
+
+  setSubmittedTasks((current) => ({
+    ...current,
+    [taskId]: true,
+  }))
+
+  setTasks(
+    tasks.map((task) =>
+      task.id === taskId
+        ? { ...task, completed: true }
+        : task
+    )
+  )
+}
 
   const toggleTask = (id) => {
     setTasks(
