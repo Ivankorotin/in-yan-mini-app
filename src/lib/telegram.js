@@ -8,6 +8,14 @@ export function getTelegramId() {
   return 'demo-user'
 }
 
+// Фото профиля из Telegram (если пользователь его открыл боту).
+// Поле photo_url не проверяется криптографически, поэтому используем
+// его только для отображения аватарки, а не как источник истины.
+export function getTelegramPhotoUrl() {
+  const tg = window.Telegram?.WebApp
+  return tg?.initDataUnsafe?.user?.photo_url || null
+}
+
 export function initTelegramApp() {
   const tg = window.Telegram?.WebApp
   if (tg) {
