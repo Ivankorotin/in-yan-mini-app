@@ -117,7 +117,6 @@ function RoutePage({
   reflectionSaved,
   setReflectionSaved,
   session,
-  profile,
 }) {
   const [factor, setFactor] = useState('')
   const [comment, setComment] = useState('')
@@ -130,8 +129,6 @@ function RoutePage({
 
   const completedTasks = tasks.filter((task) => task.completed).length
   const currentWeek = weeks.find((w) => w.status === 'current') || weeks[0]
-
-  const [selectedNode, setSelectedNode] = useState({ type: 'week', number: currentWeek?.number })
 
   const updateTaskAnswer = (taskId, value) => {
     setTaskAnswers((current) => ({ ...current, [taskId]: value }))
@@ -183,31 +180,11 @@ function RoutePage({
     }
   }
 
-  const routePoints = buildRoutePoints(weeks.length + 1)
-  const finishIndex = weeks.length
+  const routePoints = buildRoutePoints(weeks.length)
   const pathAll = buildRouteCurve(routePoints)
   const currentIdx = weeks.findIndex((w) => w.status === 'current')
   const solidCount = currentIdx === -1 ? weeks.length : currentIdx + 1
   const pathSolid = solidCount > 1 ? buildRouteCurve(routePoints.slice(0, solidCount)) : null
-  const allWeeksDone = weeks.every((w) => w.status === 'completed')
-
-  const renderCaption = () => {
-    if (selectedNode.type === 'finish') {
-      return (
-        <>
-          <b>🏁 Твоя цель:</b> {profile?.goal || 'Будет определена вместе с психологом'}
-        </>
-      )
-    }
-    const week = weeks.find((w) => w.number === selectedNode.number)
-    if (!week) return null
-    const statusWord = week.status === 'completed' ? 'пройдено' : week.status === 'current' ? 'сейчас' : 'ещё впереди'
-    return (
-      <>
-        <b>Неделя {week.number} — {week.title}.</b> {week.description} · <span className="route-caption-status">{statusWord}</span>
-      </>
-    )
-  }
 
   return (
     <>
@@ -222,55 +199,34 @@ function RoutePage({
           {weeks.map((week, i) => {
             const p = routePoints[i]
             const lines = wrapLabel(week.title, 13)
-            const labelY = i % 2 === 0 ? -24 : 34
-            const isSelected = selectedNode.type === 'week' && selectedNode.number === week.number
+            const isLast = i === weeks.length - 1
+            // Первая точка уходит вниз, дальше — зигзагом вверх-вниз,
+            // так что последняя (финишная) точка всегда оказывается наверху.
+            const goesDown = i % 2 === 0
+            const labelY = goesDown ? 34 : -24
             const r = week.status === 'current' ? 10 : 8
 
             return (
-              <g
-                key={week.number}
-                className="route-node"
-                onClick={() => setSelectedNode({ type: 'week', number: week.number })}
-              >
+              <g key={week.number} className="route-node">
                 {week.status === 'current' && <circle cx={p.x} cy={p.y} r={r + 6} className="route-node-glow" />}
-                {isSelected && <circle cx={p.x} cy={p.y} r={r + 4} className="route-node-ring" />}
-                <circle cx={p.x} cy={p.y} r={r} className={`route-node-dot ${week.status}`} />
-                {week.status === 'completed' && (
+                <circle cx={p.x} cy={p.y} r={isLast ? r + 2 : r} className={`route-node-dot ${week.status} ${isLast ? 'finish' : ''}`} />
+                {isLast ? (
+                  <text x={p.x} y={p.y + 3.5} textAnchor="middle" fontSize="10">🏁</text>
+                ) : week.status === 'completed' ? (
                   <path d={`M ${p.x - 3.5} ${p.y} l 2.5 2.5 l 5 -5`} className="route-node-check" />
-                )}
-                {week.status === 'future' && <circle cx={p.x} cy={p.y} r={2} className="route-node-lockdot" />}
-                {week.status !== 'completed' && week.status !== 'current' && (
+                ) : (
                   <text x={p.x} y={p.y + 3.5} textAnchor="middle" className="route-node-number">{week.number}</text>
                 )}
                 {lines.map((ln, li) => (
                   <text key={li} x={p.x} y={p.y + labelY + li * 10} textAnchor="middle" className="route-node-label">{ln}</text>
                 ))}
-                <text x={p.x} y={p.y + (i % 2 === 0 ? labelY - 11 : labelY + lines.length * 10 + 2)} textAnchor="middle" className="route-node-sub">
-                  Нед. {week.number}
+                <text x={p.x} y={p.y + (goesDown ? labelY + lines.length * 10 + 2 : labelY - 11)} textAnchor="middle" className="route-node-sub">
+                  {isLast ? 'финиш' : `Нед. ${week.number}`}
                 </text>
               </g>
             )
           })}
-
-          {(() => {
-            const fp = routePoints[finishIndex]
-            const fLines = wrapLabel(profile?.goal || 'Твоя цель', 15)
-            const isSelected = selectedNode.type === 'finish'
-            return (
-              <g className="route-node" onClick={() => setSelectedNode({ type: 'finish' })}>
-                {isSelected && <circle cx={fp.x} cy={fp.y} r={15} className="route-node-ring finish" />}
-                <circle cx={fp.x} cy={fp.y} r={11} className={`route-finish-dot ${allWeeksDone ? 'reached' : ''}`} />
-                <text x={fp.x} y={fp.y + 4} textAnchor="middle" fontSize="11">🏁</text>
-                {fLines.map((ln, li) => (
-                  <text key={li} x={fp.x - 6} y={fp.y - 20 + li * 10} textAnchor="middle" className="route-finish-label">{ln}</text>
-                ))}
-                <text x={fp.x - 6} y={fp.y - 31} textAnchor="middle" className="route-node-sub">цель</text>
-              </g>
-            )
-          })()}
         </svg>
-
-        <div className="route-caption">{renderCaption()}</div>
       </section>
 
       {currentWeek && (
@@ -652,7 +608,6 @@ function App() {
         reflectionSaved={reflectionSaved}
         setReflectionSaved={setReflectionSaved}
         session={session}
-        profile={profile}
       />
     )
   }
