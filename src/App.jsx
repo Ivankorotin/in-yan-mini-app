@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
-import { getTelegramId, initTelegramApp } from './lib/telegram'
+import { getTelegramId, getTelegramPhotoUrl, initTelegramApp } from './lib/telegram'
 import {
   loadClientData,
   setTaskCompleted,
@@ -54,6 +54,18 @@ const initialSession = {
   display: '10 сентября в 19:00',
   format: 'Онлайн • Zoom',
   link: null,
+}
+
+// Логотип: две мягко пересекающиеся окружности — символ двоих,
+// идущих друг другу навстречу. Простой, не завязан на конкретный
+// эмодзи-набор, легко перекрашивается под любую палитру.
+function LogoMark() {
+  return (
+    <svg className="logo-mark" viewBox="0 0 40 40" width="36" height="36">
+      <circle cx="16" cy="20" r="12" className="logo-mark-a" />
+      <circle cx="24" cy="20" r="12" className="logo-mark-b" />
+    </svg>
+  )
 }
 
 function formatSessionDate(iso) {
@@ -189,7 +201,7 @@ function RoutePage({
   return (
     <>
       <h1 className="page-title">Твой маршрут</h1>
-      <p className="page-subtitle">4 недели к более близким и осознанным отношениям</p>
+      <p className="page-subtitle">4 недели для гармонизации отношений</p>
 
       <section className="route-card">
         <svg className="route-svg" viewBox="0 0 320 190">
@@ -200,10 +212,10 @@ function RoutePage({
             const p = routePoints[i]
             const lines = wrapLabel(week.title, 13)
             const isLast = i === weeks.length - 1
-            // Первая точка уходит вниз, дальше — зигзагом вверх-вниз,
-            // так что последняя (финишная) точка всегда оказывается наверху.
+            // Точки зигзагом (неделя 1 внизу, неделя 2 выше и т.д.),
+            // а подписи всегда сверху над своей точкой — так читается ровнее.
             const goesDown = i % 2 === 0
-            const labelY = goesDown ? 34 : -24
+            const labelY = -24
             const r = week.status === 'current' ? 10 : 8
 
             return (
@@ -220,7 +232,7 @@ function RoutePage({
                 {lines.map((ln, li) => (
                   <text key={li} x={p.x} y={p.y + labelY + li * 10} textAnchor="middle" className="route-node-label">{ln}</text>
                 ))}
-                <text x={p.x} y={p.y + (goesDown ? labelY + lines.length * 10 + 2 : labelY - 11)} textAnchor="middle" className="route-node-sub">
+                <text x={p.x} y={p.y + labelY - 11} textAnchor="middle" className="route-node-sub">
                   {isLast ? 'финиш' : `Нед. ${week.number}`}
                 </text>
               </g>
@@ -439,7 +451,7 @@ function MaterialsPage({ materials }) {
   )
 }
 
-function ProfilePage({ tasks, profile }) {
+function ProfilePage({ tasks, profile, photoUrl }) {
   const completedTasks = tasks.filter((task) => task.completed).length
 
   return (
@@ -448,7 +460,11 @@ function ProfilePage({ tasks, profile }) {
       <p className="page-subtitle">Твоё личное пространство в практикуме</p>
 
       <section className="profile-card">
-        <div className="profile-avatar">{profile.name?.[0] || '?'}</div>
+        {photoUrl ? (
+          <img src={photoUrl} alt={profile.name} className="profile-avatar profile-avatar-photo" />
+        ) : (
+          <div className="profile-avatar">{profile.name?.[0] || '?'}</div>
+        )}
         <div>
           <div className="profile-name">{profile.name}</div>
           {profile.age && <div className="profile-age">{profile.age} года</div>}
@@ -508,6 +524,7 @@ function App() {
 
   const [clientId, setClientId] = useState(null)
   const [profile, setProfile] = useState(initialProfile)
+  const [photoUrl, setPhotoUrl] = useState(null)
   const [weeks, setWeeks] = useState(initialWeeks)
   const [tasks, setTasks] = useState(initialTasks)
   const [materials, setMaterials] = useState(initialMaterials)
@@ -519,6 +536,7 @@ function App() {
 
   useEffect(() => {
     initTelegramApp()
+    setPhotoUrl(getTelegramPhotoUrl())
 
     async function boot() {
       const telegramId = getTelegramId()
@@ -593,7 +611,7 @@ function App() {
 
   const renderPage = () => {
     if (activeNav === 'materials') return <MaterialsPage materials={materials} />
-    if (activeNav === 'profile') return <ProfilePage tasks={tasks} profile={profile} />
+    if (activeNav === 'profile') return <ProfilePage tasks={tasks} profile={profile} photoUrl={photoUrl} />
 
     return (
       <RoutePage
@@ -616,10 +634,12 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="logo">
-          <div className="logo-symbol">☯</div>
-          <div className="logo-title">ИНЬ ЯН</div>
+          <LogoMark />
+          <div className="logo-text">
+            <div className="logo-title">Инь Ян</div>
+            <div className="logo-tagline">практикум для пар</div>
+          </div>
         </div>
-        <div className="notification">♧</div>
       </header>
 
       {!supabase && (
