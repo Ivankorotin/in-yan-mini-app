@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-const weeks = [
+const initialWeeks = [
   {
     number: 1,
     title: 'Заметить себя',
@@ -27,30 +27,74 @@ const weeks = [
   },
 ]
 
-const materials = [
+const initialTasks = [
   {
-    session: 'Сессия 1',
-    title: 'Знакомство и определение запроса',
-    type: 'Материалы появятся после сессии',
+    id: 1,
+    title: 'Что происходит в наших отношениях сейчас?',
+    description:
+      'Опиши несколько ситуаций, в которых особенно сильно чувствуешь дистанцию с партнёром.',
+    completed: false,
+    allowText: true,
+    allowPhotos: true,
   },
   {
-    session: 'Сессия 2',
-    title: 'Работа с отношениями',
-    type: 'Материалы появятся после сессии',
-  },
-  {
-    session: 'Сессия 3',
-    title: 'Новые способы взаимодействия',
-    type: 'Материалы появятся после сессии',
-  },
-  {
-    session: 'Сессия 4',
-    title: 'Закрепление изменений',
-    type: 'Материалы появятся после сессии',
+    id: 2,
+    title: 'Замечаем свои потребности',
+    description:
+      'Напиши, чего тебе сейчас больше всего хочется получать от отношений.',
+    completed: false,
+    allowText: true,
+    allowPhotos: false,
   },
 ]
 
-function RoutePage({ mood, setMood }) {
+const initialMaterials = [
+  {
+    id: 1,
+    session: 'Сессия 1',
+    date: '3 сентября',
+    title: 'Материал после первой сессии',
+    type: 'PDF',
+  },
+  {
+    id: 2,
+    session: 'Сессия 2',
+    date: '10 сентября',
+    title: 'Рекомендации после сессии',
+    type: 'Документ',
+  },
+]
+
+function RoutePage({
+  mood,
+  setMood,
+  resource,
+  setResource,
+  tasks,
+  setTasks,
+  reflectionSaved,
+  setReflectionSaved,
+}) {
+  const [factor, setFactor] = useState('')
+  const [comment, setComment] = useState('')
+
+  const completedTasks = tasks.filter((task) => task.completed).length
+
+  const toggleTask = (id) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === id
+          ? { ...task, completed: !task.completed }
+          : task
+      )
+    )
+  }
+
+  const saveReflection = () => {
+    if (mood === null || resource === null) return
+    setReflectionSaved(true)
+  }
+
   return (
     <>
       <h1 className="page-title">Твой маршрут</h1>
@@ -69,7 +113,7 @@ function RoutePage({ mood, setMood }) {
             style={{ height: '25%' }}
           ></div>
 
-          {weeks.map((week) => (
+          {initialWeeks.map((week) => (
             <div
               className={`week ${week.status}`}
               key={week.number}
@@ -97,6 +141,83 @@ function RoutePage({ mood, setMood }) {
         </div>
       </section>
 
+      <section className="current-week-card">
+        <div className="current-week-label">
+          Текущая неделя
+        </div>
+
+        <h2>Неделя 2 — Услышать себя</h2>
+
+        <p>
+          Исследуем чувства, потребности и желания,
+          которые влияют на отношения.
+        </p>
+      </section>
+
+      <section className="tasks-card">
+        <div className="section-heading">
+          <div>
+            <h2>Задания недели</h2>
+            <p>
+              Выполнено {completedTasks} из {tasks.length}
+            </p>
+          </div>
+        </div>
+
+        <div className="tasks-list">
+          {tasks.map((task) => (
+            <div className="task-card" key={task.id}>
+
+              <button
+                className={`task-check ${
+                  task.completed ? 'checked' : ''
+                }`}
+                onClick={() => toggleTask(task.id)}
+              >
+                {task.completed ? '✓' : ''}
+              </button>
+
+              <div className="task-body">
+                <div className="task-title">
+                  {task.title}
+                </div>
+
+                <div className="task-description">
+                  {task.description}
+                </div>
+
+                {task.allowText && (
+                  <textarea
+                    className="task-textarea"
+                    placeholder="Напиши свой ответ..."
+                  />
+                )}
+
+                {task.allowPhotos && (
+                  <button
+                    className="upload-button"
+                    onClick={() =>
+                      alert(
+                        'Здесь появится загрузка 1–3 фотографий'
+                      )
+                    }
+                  >
+                    📷 Добавить фото
+                  </button>
+                )}
+
+                {task.completed && (
+                  <div className="task-status">
+                    ✓ Задание отмечено выполненным
+                  </div>
+                )}
+              </div>
+
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="session-card">
         <div className="session-label">
           Следующая сессия
@@ -112,7 +233,9 @@ function RoutePage({ mood, setMood }) {
 
         <button
           className="session-button"
-          onClick={() => alert('Ссылка на Zoom появится здесь')}
+          onClick={() =>
+            alert('Здесь будет ссылка на Zoom')
+          }
         >
           Подключиться
         </button>
@@ -129,22 +252,28 @@ function RoutePage({ mood, setMood }) {
 
         <div className="mood-list">
           {[
-            ['😣', 'Очень плохо'],
-            ['😕', 'Плохо'],
-            ['😐', 'Нейтрально'],
-            ['🙂', 'Хорошо'],
-            ['😊', 'Отлично'],
+            ['😣', 'Очень тяжело'],
+            ['😕', 'Скорее тяжело'],
+            ['😐', 'Нормально'],
+            ['🙂', 'Скорее хорошо'],
+            ['😊', 'Хорошо'],
           ].map(([emoji, label], index) => (
             <button
               className="mood"
               key={label}
-              onClick={() => setMood(index)}
+              onClick={() => {
+                setMood(index + 1)
+                setReflectionSaved(false)
+              }}
             >
               <div
                 className="mood-face"
                 style={
-                  mood === index
-                    ? { boxShadow: '0 0 0 2px #55745c' }
+                  mood === index + 1
+                    ? {
+                        boxShadow:
+                          '0 0 0 2px #55745c',
+                      }
                     : {}
                 }
               >
@@ -157,6 +286,87 @@ function RoutePage({ mood, setMood }) {
             </button>
           ))}
         </div>
+
+        <div className="reflection-question resource-question">
+          Сколько у тебя сегодня ресурса?
+        </div>
+
+        <div className="resource-list">
+          {[
+            ['🪫', 'Почти нет'],
+            ['🔋', 'Мало'],
+            ['🔋🔋', 'Средне'],
+            ['🔋🔋🔋', 'Много'],
+            ['🔋🔋🔋🔋', 'Очень много'],
+          ].map(([icon, label], index) => (
+            <button
+              className={`resource-item ${
+                resource === index ? 'selected' : ''
+              }`}
+              key={label}
+              onClick={() => {
+                setResource(index)
+                setReflectionSaved(false)
+              }}
+            >
+              <span>{icon}</span>
+              <small>{label}</small>
+            </button>
+          ))}
+        </div>
+
+        <div className="reflection-question">
+          Что сегодня больше всего повлияло
+          на твоё состояние?
+        </div>
+
+        <div className="factor-list">
+          {[
+            ['❤️', 'Отношения'],
+            ['💼', 'Работа'],
+            ['👨‍👩‍👧', 'Семья'],
+            ['📚', 'Учёба'],
+            ['😴', 'Сон / усталость'],
+            ['😊', 'Что-то хорошее'],
+          ].map(([icon, label]) => (
+            <button
+              className={`factor ${
+                factor === label ? 'selected' : ''
+              }`}
+              key={label}
+              onClick={() => {
+                setFactor(label)
+                setReflectionSaved(false)
+              }}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+
+        <textarea
+          className="reflection-textarea"
+          placeholder="Можно добавить что-то ещё..."
+          value={comment}
+          onChange={(event) => {
+            setComment(event.target.value)
+            setReflectionSaved(false)
+          }}
+        />
+
+        <button
+          className="reflection-save"
+          onClick={saveReflection}
+          disabled={mood === null || resource === null}
+        >
+          Сохранить рефлексию
+        </button>
+
+        {reflectionSaved && (
+          <div className="reflection-saved">
+            ✓ Рефлексия сохранена
+          </div>
+        )}
       </section>
     </>
   )
@@ -168,17 +378,24 @@ function MaterialsPage() {
       <h1 className="page-title">Материалы</h1>
 
       <p className="page-subtitle">
-        Всё необходимое для твоего маршрута
+        Всё, что психолог подготовил после сессий
       </p>
 
       <div className="materials-list">
-        {materials.map((material) => (
-          <div className="material-card" key={material.session}>
-            <div className="material-icon">📄</div>
+
+        {initialMaterials.map((material) => (
+          <div
+            className="material-card"
+            key={material.id}
+          >
+            <div className="material-icon">
+              📄
+            </div>
 
             <div className="material-content">
+
               <div className="material-session">
-                {material.session}
+                {material.session} · {material.date}
               </div>
 
               <div className="material-title">
@@ -188,6 +405,7 @@ function MaterialsPage() {
               <div className="material-type">
                 {material.type}
               </div>
+
             </div>
 
             <div className="material-arrow">
@@ -195,12 +413,23 @@ function MaterialsPage() {
             </div>
           </div>
         ))}
+
+      </div>
+
+      <div className="materials-note">
+        Материалы могут быть разными: текст,
+        схема, PDF, изображение, видео или другой
+        файл. Они появляются здесь после сессии.
       </div>
     </>
   )
 }
 
-function ProfilePage() {
+function ProfilePage({ tasks }) {
+  const completedTasks = tasks.filter(
+    (task) => task.completed
+  ).length
+
   return (
     <>
       <h1 className="page-title">Профиль</h1>
@@ -255,7 +484,10 @@ function ProfilePage() {
 
         <div className="progress-header">
           <span>Прогресс практикума</span>
-          <strong>1 из 4 недель</strong>
+
+          <strong>
+            1 из 4 недель
+          </strong>
         </div>
 
         <div className="progress-bar">
@@ -267,13 +499,61 @@ function ProfilePage() {
         </div>
 
       </section>
+
+      <section className="completed-card">
+
+        <div className="completed-header">
+          <h2>Выполненные задания</h2>
+
+          <span>
+            {completedTasks}
+          </span>
+        </div>
+
+        {tasks
+          .filter((task) => task.completed)
+          .map((task) => (
+            <div
+              className="completed-task"
+              key={task.id}
+            >
+              <div className="completed-check">
+                ✓
+              </div>
+
+              <div>
+                <div className="completed-task-title">
+                  {task.title}
+                </div>
+
+                <div className="completed-task-info">
+                  Ответ сохранён
+                </div>
+              </div>
+            </div>
+          ))}
+
+        {completedTasks === 0 && (
+          <div className="empty-state">
+            Здесь появятся выполненные задания.
+          </div>
+        )}
+
+      </section>
     </>
   )
 }
 
 function App() {
   const [activeNav, setActiveNav] = useState('route')
+
   const [mood, setMood] = useState(null)
+  const [resource, setResource] = useState(null)
+
+  const [tasks, setTasks] = useState(initialTasks)
+
+  const [reflectionSaved, setReflectionSaved] =
+    useState(false)
 
   const renderPage = () => {
     if (activeNav === 'materials') {
@@ -281,13 +561,19 @@ function App() {
     }
 
     if (activeNav === 'profile') {
-      return <ProfilePage />
+      return <ProfilePage tasks={tasks} />
     }
 
     return (
       <RoutePage
         mood={mood}
         setMood={setMood}
+        resource={resource}
+        setResource={setResource}
+        tasks={tasks}
+        setTasks={setTasks}
+        reflectionSaved={reflectionSaved}
+        setReflectionSaved={setReflectionSaved}
       />
     )
   }
@@ -296,17 +582,23 @@ function App() {
     <div className="app">
 
       <header className="app-header">
+
         <div className="logo">
-          <div className="logo-symbol">☯</div>
+
+          <div className="logo-symbol">
+            ☯
+          </div>
 
           <div className="logo-title">
             ИНЬ ЯН
           </div>
+
         </div>
 
         <div className="notification">
           ♧
         </div>
+
       </header>
 
       <main>
@@ -317,31 +609,49 @@ function App() {
 
         <button
           className={`nav-item ${
-            activeNav === 'route' ? 'active' : ''
+            activeNav === 'route'
+              ? 'active'
+              : ''
           }`}
-          onClick={() => setActiveNav('route')}
+          onClick={() =>
+            setActiveNav('route')
+          }
         >
-          <span className="nav-icon">🗺</span>
+          <span className="nav-icon">
+            🗺
+          </span>
           Маршрут
         </button>
 
         <button
           className={`nav-item ${
-            activeNav === 'materials' ? 'active' : ''
+            activeNav === 'materials'
+              ? 'active'
+              : ''
           }`}
-          onClick={() => setActiveNav('materials')}
+          onClick={() =>
+            setActiveNav('materials')
+          }
         >
-          <span className="nav-icon">📚</span>
+          <span className="nav-icon">
+            📚
+          </span>
           Материалы
         </button>
 
         <button
           className={`nav-item ${
-            activeNav === 'profile' ? 'active' : ''
+            activeNav === 'profile'
+              ? 'active'
+              : ''
           }`}
-          onClick={() => setActiveNav('profile')}
+          onClick={() =>
+            setActiveNav('profile')
+          }
         >
-          <span className="nav-icon">👤</span>
+          <span className="nav-icon">
+            👤
+          </span>
           Профиль
         </button>
 
