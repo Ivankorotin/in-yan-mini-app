@@ -147,10 +147,18 @@ function RoutePage({
       <section className="route-card">
         <div className="route">
           <div className="route-line"></div>
-          <div className="route-line-progress" style={{ height: '25%' }}></div>
+          <div
+            className="route-line-progress"
+            style={{
+              height:
+                weeks.length > 1
+                  ? `${(weeks.findIndex((w) => w.number === (currentWeek?.number ?? 1)) / (weeks.length - 1)) * 100}%`
+                  : '0%',
+            }}
+          ></div>
 
           {weeks.map((week) => (
-            <div className={`week ${week.status}`} key={week.number}>
+            <div className={`week ${week.status} ${week.number % 2 === 1 ? 'week-left' : 'week-right'}`} key={week.number}>
               <div className="week-content">
                 <div className="week-title">Неделя {week.number}</div>
                 <div className="week-description">
