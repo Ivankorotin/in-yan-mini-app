@@ -90,15 +90,14 @@ button {
 
 .route {
   position: relative;
-  min-height: 440px;
-  padding: 5px 0;
+  padding: 6px 0;
 }
 
 .route-line {
   position: absolute;
   left: 50%;
-  top: 30px;
-  bottom: 30px;
+  top: 24px;
+  bottom: 24px;
   width: 2px;
   background: #d9ddd6;
   transform: translateX(-50%);
@@ -107,42 +106,37 @@ button {
 .route-line-progress {
   position: absolute;
   left: 50%;
-  top: 30px;
+  top: 24px;
   width: 2px;
   background: #55745c;
   transform: translateX(-50%);
+  transition: height 0.4s ease;
 }
 
 .week {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 48px 1fr;
   align-items: center;
-  min-height: 105px;
+  min-height: 100px;
 }
 
-.week:nth-child(odd) {
-  justify-content: flex-start;
-  padding-right: 50%;
+.week-left .week-content {
+  grid-column: 1;
+  text-align: right;
+  margin-right: 14px;
+  justify-self: end;
 }
 
-.week:nth-child(even) {
-  justify-content: flex-end;
-  padding-left: 50%;
+.week-right .week-content {
+  grid-column: 3;
+  text-align: left;
+  margin-left: 14px;
+  justify-self: start;
 }
 
 .week-content {
-  width: 100%;
-  max-width: 175px;
-}
-
-.week:nth-child(odd) .week-content {
-  text-align: right;
-  padding-right: 22px;
-}
-
-.week:nth-child(even) .week-content {
-  text-align: left;
-  padding-left: 22px;
+  max-width: 190px;
 }
 
 .week-title {
@@ -158,19 +152,18 @@ button {
 }
 
 .week-point {
-  position: absolute;
-  left: 50%;
-  top: 50%;
+  grid-column: 2;
+  justify-self: center;
+  position: relative;
+  z-index: 2;
   width: 48px;
   height: 48px;
-  transform: translate(-50%, -50%);
   border-radius: 50%;
   background: #f7f5f0;
   border: 2px solid #c8cec7;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2;
   font-weight: 600;
   color: #7a8078;
 }
