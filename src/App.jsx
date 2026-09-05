@@ -64,6 +64,47 @@ function formatSessionDate(iso) {
   return `${datePart} в ${timePart}`
 }
 
+// ============================================================
+// Карта маршрута: изогнутая линия с точками-неделями и финишем.
+// Каждая точка — короткая формулировка шага (берётся из week.title),
+// последняя точка — личная цель клиента (profile.goal).
+// ============================================================
+function wrapLabel(text, maxCharsPerLine) {
+  const words = (text || '').split(' ')
+  const lines = []
+  let line = ''
+  words.forEach((word) => {
+    if ((line + ' ' + word).trim().length > maxCharsPerLine && line) {
+      lines.push(line.trim())
+      line = word
+    } else {
+      line = (line + ' ' + word).trim()
+    }
+  })
+  if (line) lines.push(line)
+  return lines.slice(0, 2)
+}
+
+function buildRoutePoints(count, { startX = 34, endX = 286, baseY = 74, amplitude = 15 } = {}) {
+  const step = count > 1 ? (endX - startX) / (count - 1) : 0
+  return Array.from({ length: count }, (_, i) => ({
+    x: startX + step * i,
+    y: baseY + (i % 2 === 0 ? -amplitude : amplitude),
+  }))
+}
+
+function buildRouteCurve(points, controlOffset = 16) {
+  if (points.length < 2) return ''
+  let d = `M ${points[0].x} ${points[0].y}`
+  for (let i = 1; i < points.length; i++) {
+    const p0 = points[i - 1]
+    const p1 = points[i]
+    const mx = (p0.x + p1.x) / 2
+    d += ` Q ${mx} ${p0.y + (i % 2 === 0 ? controlOffset : -controlOffset)} ${p1.x} ${p1.y}`
+  }
+  return d
+}
+
 function RoutePage({
   weeks,
   tasks,
@@ -76,6 +117,7 @@ function RoutePage({
   reflectionSaved,
   setReflectionSaved,
   session,
+  profile,
 }) {
   const [factor, setFactor] = useState('')
   const [comment, setComment] = useState('')
@@ -88,6 +130,8 @@ function RoutePage({
 
   const completedTasks = tasks.filter((task) => task.completed).length
   const currentWeek = weeks.find((w) => w.status === 'current') || weeks[0]
+
+  const [selectedNode, setSelectedNode] = useState({ type: 'week', number: currentWeek?.number })
 
   const updateTaskAnswer = (taskId, value) => {
     setTaskAnswers((current) => ({ ...current, [taskId]: value }))
@@ -139,38 +183,94 @@ function RoutePage({
     }
   }
 
+  const routePoints = buildRoutePoints(weeks.length + 1)
+  const finishIndex = weeks.length
+  const pathAll = buildRouteCurve(routePoints)
+  const currentIdx = weeks.findIndex((w) => w.status === 'current')
+  const solidCount = currentIdx === -1 ? weeks.length : currentIdx + 1
+  const pathSolid = solidCount > 1 ? buildRouteCurve(routePoints.slice(0, solidCount)) : null
+  const allWeeksDone = weeks.every((w) => w.status === 'completed')
+
+  const renderCaption = () => {
+    if (selectedNode.type === 'finish') {
+      return (
+        <>
+          <b>🏁 Твоя цель:</b> {profile?.goal || 'Будет определена вместе с психологом'}
+        </>
+      )
+    }
+    const week = weeks.find((w) => w.number === selectedNode.number)
+    if (!week) return null
+    const statusWord = week.status === 'completed' ? 'пройдено' : week.status === 'current' ? 'сейчас' : 'ещё впереди'
+    return (
+      <>
+        <b>Неделя {week.number} — {week.title}.</b> {week.description} · <span className="route-caption-status">{statusWord}</span>
+      </>
+    )
+  }
+
   return (
     <>
       <h1 className="page-title">Твой маршрут</h1>
       <p className="page-subtitle">4 недели к более близким и осознанным отношениям</p>
 
       <section className="route-card">
-        <div className="route">
-          <div className="route-line"></div>
-          <div
-            className="route-line-progress"
-            style={{
-              height:
-                weeks.length > 1
-                  ? `${(weeks.findIndex((w) => w.number === (currentWeek?.number ?? 1)) / (weeks.length - 1)) * 100}%`
-                  : '0%',
-            }}
-          ></div>
+        <svg className="route-svg" viewBox="0 0 320 190">
+          <path d={pathAll} className="route-path-base" />
+          {pathSolid && <path d={pathSolid} className="route-path-progress" />}
 
-          {weeks.map((week) => (
-            <div className={`week ${week.status} ${week.number % 2 === 1 ? 'week-left' : 'week-right'}`} key={week.number}>
-              <div className="week-content">
-                <div className="week-title">Неделя {week.number}</div>
-                <div className="week-description">
-                  {week.title}
-                  <br />
-                  {week.description}
-                </div>
-              </div>
-              <div className="week-point">{week.status === 'completed' ? '✓' : week.number}</div>
-            </div>
-          ))}
-        </div>
+          {weeks.map((week, i) => {
+            const p = routePoints[i]
+            const lines = wrapLabel(week.title, 13)
+            const labelY = i % 2 === 0 ? -24 : 34
+            const isSelected = selectedNode.type === 'week' && selectedNode.number === week.number
+            const r = week.status === 'current' ? 10 : 8
+
+            return (
+              <g
+                key={week.number}
+                className="route-node"
+                onClick={() => setSelectedNode({ type: 'week', number: week.number })}
+              >
+                {week.status === 'current' && <circle cx={p.x} cy={p.y} r={r + 6} className="route-node-glow" />}
+                {isSelected && <circle cx={p.x} cy={p.y} r={r + 4} className="route-node-ring" />}
+                <circle cx={p.x} cy={p.y} r={r} className={`route-node-dot ${week.status}`} />
+                {week.status === 'completed' && (
+                  <path d={`M ${p.x - 3.5} ${p.y} l 2.5 2.5 l 5 -5`} className="route-node-check" />
+                )}
+                {week.status === 'future' && <circle cx={p.x} cy={p.y} r={2} className="route-node-lockdot" />}
+                {week.status !== 'completed' && week.status !== 'current' && (
+                  <text x={p.x} y={p.y + 3.5} textAnchor="middle" className="route-node-number">{week.number}</text>
+                )}
+                {lines.map((ln, li) => (
+                  <text key={li} x={p.x} y={p.y + labelY + li * 10} textAnchor="middle" className="route-node-label">{ln}</text>
+                ))}
+                <text x={p.x} y={p.y + (i % 2 === 0 ? labelY - 11 : labelY + lines.length * 10 + 2)} textAnchor="middle" className="route-node-sub">
+                  Нед. {week.number}
+                </text>
+              </g>
+            )
+          })}
+
+          {(() => {
+            const fp = routePoints[finishIndex]
+            const fLines = wrapLabel(profile?.goal || 'Твоя цель', 15)
+            const isSelected = selectedNode.type === 'finish'
+            return (
+              <g className="route-node" onClick={() => setSelectedNode({ type: 'finish' })}>
+                {isSelected && <circle cx={fp.x} cy={fp.y} r={15} className="route-node-ring finish" />}
+                <circle cx={fp.x} cy={fp.y} r={11} className={`route-finish-dot ${allWeeksDone ? 'reached' : ''}`} />
+                <text x={fp.x} y={fp.y + 4} textAnchor="middle" fontSize="11">🏁</text>
+                {fLines.map((ln, li) => (
+                  <text key={li} x={fp.x - 6} y={fp.y - 20 + li * 10} textAnchor="middle" className="route-finish-label">{ln}</text>
+                ))}
+                <text x={fp.x - 6} y={fp.y - 31} textAnchor="middle" className="route-node-sub">цель</text>
+              </g>
+            )
+          })()}
+        </svg>
+
+        <div className="route-caption">{renderCaption()}</div>
       </section>
 
       {currentWeek && (
@@ -552,6 +652,7 @@ function App() {
         reflectionSaved={reflectionSaved}
         setReflectionSaved={setReflectionSaved}
         session={session}
+        profile={profile}
       />
     )
   }
