@@ -95,10 +95,6 @@ button {
   overflow: visible;
 }
 
-.route-node {
-  cursor: pointer;
-}
-
 .route-path-base {
   fill: none;
   stroke: #d9ddd6;
@@ -117,17 +113,6 @@ button {
 .route-node-glow {
   fill: #c89b25;
   opacity: 0.18;
-}
-
-.route-node-ring {
-  fill: none;
-  stroke: #55745c;
-  stroke-width: 1.5;
-  opacity: 0.6;
-}
-
-.route-node-ring.finish {
-  stroke: #c89b25;
 }
 
 .route-node-dot {
@@ -149,16 +134,20 @@ button {
   stroke: #c8cec7;
 }
 
+.route-node-dot.finish {
+  stroke-width: 2.4;
+}
+
+.route-node-dot.finish.future {
+  stroke: #c89b25;
+}
+
 .route-node-check {
   stroke: white;
   stroke-width: 1.8;
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.route-node-lockdot {
-  fill: #9a9e97;
 }
 
 .route-node-number {
@@ -178,42 +167,6 @@ button {
   font-family: Arial, sans-serif;
   font-size: 8.5px;
   fill: #9a9e97;
-}
-
-.route-finish-dot {
-  fill: #ffffff;
-  stroke: #c89b25;
-  stroke-width: 2.2;
-}
-
-.route-finish-dot.reached {
-  fill: #c89b25;
-}
-
-.route-finish-label {
-  font-family: Georgia, serif;
-  font-weight: 600;
-  font-size: 9.5px;
-  fill: #a97c1f;
-}
-
-.route-caption {
-  margin-top: 12px;
-  padding: 12px 14px;
-  background: #f7f5f0;
-  border-radius: 14px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: #3a3d38;
-  min-height: 20px;
-}
-
-.route-caption b {
-  font-family: Georgia, serif;
-}
-
-.route-caption-status {
-  color: #9a9e97;
 }
 
 .session-card {
