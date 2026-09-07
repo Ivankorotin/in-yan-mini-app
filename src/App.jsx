@@ -1,39 +1,46 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from './lib/supabaseClient'
 import { getTelegramId, getTelegramPhotoUrl, initTelegramApp } from './lib/telegram'
+import { authenticateWithTelegram } from './lib/telegramAuth'
 import {
-  loadClientData,
+  loadParticipantData,
   setTaskCompleted,
   saveTaskAnswer as apiSaveTaskAnswer,
-  uploadTaskPhoto,
+  uploadTaskPhoto as apiUploadTaskPhoto,
   saveReflection as apiSaveReflection,
 } from './lib/api'
 
-const initialWeeks = [
-  { number: 1, title: 'Заметить себя', description: 'Разбираемся, что происходит сейчас', status: 'completed' },
-  { number: 2, title: 'Услышать себя', description: 'Исследуем чувства, потребности и желания', status: 'current' },
-  { number: 3, title: 'Изменить привычное', description: 'Пробуем новые способы взаимодействия', status: 'future' },
-  { number: 4, title: 'Закрепить изменения', description: 'Сохраняем то, что получилось', status: 'future' },
+const initialSteps = [
+  { number: 1, title: 'Заметить себя', status: 'completed' },
+  { number: 2, title: 'Услышать себя', status: 'current' },
+  { number: 3, title: 'Изменить привычное', status: 'future' },
+  { number: 4, title: 'Закрепить изменения', status: 'future' },
 ]
 
 const initialTasks = [
   {
     id: 1,
+    routeStepNumber: 2,
     title: 'Что происходит в наших отношениях сейчас?',
     description: 'Опиши несколько ситуаций, в которых особенно сильно чувствуешь дистанцию с партнёром.',
     completed: false,
     answer: '',
     allowText: true,
     allowPhotos: true,
+    photoLimit: 3,
+    photoCount: 0,
   },
   {
     id: 2,
+    routeStepNumber: 2,
     title: 'Замечаем свои потребности',
     description: 'Напиши, чего тебе сейчас больше всего хочется получать от отношений.',
     completed: false,
     answer: '',
     allowText: true,
     allowPhotos: false,
+    photoLimit: 0,
+    photoCount: 0,
   },
 ]
 
@@ -46,8 +53,9 @@ const initialProfile = {
   name: 'Анна',
   age: 32,
   goal: 'Стать ближе к партнёру',
+  initialSituation: '',
   professionalRequest: 'Будет определён вместе с психологом',
-  currentWeek: 1,
+  currentStep: 1,
 }
 
 const initialSession = {
@@ -68,18 +76,19 @@ function LogoMark() {
   )
 }
 
-function formatSessionDate(iso) {
-  if (!iso) return null
-  const d = new Date(iso)
+function formatSessionDateTime(dateStr, timeStr) {
+  if (!dateStr) return null
+  const d = new Date(timeStr ? `${dateStr}T${timeStr}` : dateStr)
   const datePart = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(d)
+  if (!timeStr) return datePart
   const timePart = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(d)
   return `${datePart} в ${timePart}`
 }
 
 // ============================================================
-// Карта маршрута: изогнутая линия с точками-неделями и финишем.
-// Каждая точка — короткая формулировка шага (берётся из week.title),
-// последняя точка — личная цель клиента (profile.goal).
+// Карта маршрута: изогнутая линия с точками-шагами и финишем.
+// Каждая точка — короткая формулировка шага (step.title),
+// последняя точка совмещена с финишем практикума.
 // ============================================================
 function wrapLabel(text, maxCharsPerLine) {
   const words = (text || '').split(' ')
@@ -101,7 +110,7 @@ function buildRoutePoints(count, { startX = 34, endX = 286, baseY = 74, amplitud
   const step = count > 1 ? (endX - startX) / (count - 1) : 0
   return Array.from({ length: count }, (_, i) => ({
     x: startX + step * i,
-    y: baseY + (i % 2 === 0 ? -amplitude : amplitude),
+    y: baseY + (i % 2 === 0 ? amplitude : -amplitude),
   }))
 }
 
@@ -118,10 +127,10 @@ function buildRouteCurve(points, controlOffset = 16) {
 }
 
 function RoutePage({
-  weeks,
+  steps,
   tasks,
   setTasks,
-  clientId,
+  participantId,
   mood,
   setMood,
   resource,
@@ -135,12 +144,12 @@ function RoutePage({
   const [taskAnswers, setTaskAnswers] = useState(() =>
     Object.fromEntries(tasks.map((t) => [t.id, t.answer || '']))
   )
-  const [photoCounts, setPhotoCounts] = useState({})
   const pendingPhotoTaskId = useRef(null)
   const fileInputRef = useRef(null)
 
-  const completedTasks = tasks.filter((task) => task.completed).length
-  const currentWeek = weeks.find((w) => w.status === 'current') || weeks[0]
+  const currentStep = steps.find((s) => s.status === 'current') || steps[0]
+  const currentTasks = tasks.filter((t) => t.routeStepNumber === currentStep?.number)
+  const completedTasks = currentTasks.filter((task) => task.completed).length
 
   const updateTaskAnswer = (taskId, value) => {
     setTaskAnswers((current) => ({ ...current, [taskId]: value }))
@@ -153,7 +162,7 @@ function RoutePage({
       return
     }
     setTasks(tasks.map((task) => (task.id === taskId ? { ...task, completed: true, answer } : task)))
-    await apiSaveTaskAnswer(taskId, answer)
+    await apiSaveTaskAnswer(taskId, participantId, answer)
   }
 
   // Чекбокс работает только для заданий без текстового ответа —
@@ -176,10 +185,10 @@ function RoutePage({
     const files = Array.from(event.target.files || [])
     if (!taskId || files.length === 0) return
 
-    setPhotoCounts((current) => ({ ...current, [taskId]: (current[taskId] || 0) + files.length }))
+    setTasks(tasks.map((t) => (t.id === taskId ? { ...t, photoCount: (t.photoCount || 0) + files.length } : t)))
 
     for (const file of files) {
-      await uploadTaskPhoto(taskId, file)
+      await apiUploadTaskPhoto(taskId, participantId, file)
     }
     event.target.value = '' // сброс, чтобы можно было выбрать те же файлы повторно
   }
@@ -187,15 +196,20 @@ function RoutePage({
   const saveReflection = async () => {
     if (mood === null || resource === null) return
     setReflectionSaved(true)
-    if (clientId) {
-      await apiSaveReflection(clientId, { mood, resource, factor, comment })
+    if (participantId) {
+      await apiSaveReflection(participantId, {
+        wellbeing: mood,
+        resource_level: resource,
+        state_factor: factor,
+        additional_comment: comment,
+      })
     }
   }
 
-  const routePoints = buildRoutePoints(weeks.length)
+  const routePoints = buildRoutePoints(steps.length)
   const pathAll = buildRouteCurve(routePoints)
-  const currentIdx = weeks.findIndex((w) => w.status === 'current')
-  const solidCount = currentIdx === -1 ? weeks.length : currentIdx + 1
+  const currentIdx = steps.findIndex((s) => s.status === 'current')
+  const solidCount = currentIdx === -1 ? steps.length : currentIdx + 1
   const pathSolid = solidCount > 1 ? buildRouteCurve(routePoints.slice(0, solidCount)) : null
 
   return (
@@ -208,32 +222,29 @@ function RoutePage({
           <path d={pathAll} className="route-path-base" />
           {pathSolid && <path d={pathSolid} className="route-path-progress" />}
 
-          {weeks.map((week, i) => {
+          {steps.map((step, i) => {
             const p = routePoints[i]
-            const lines = wrapLabel(week.title, 13)
-            const isLast = i === weeks.length - 1
-            // Точки зигзагом (неделя 1 внизу, неделя 2 выше и т.д.),
-            // а подписи всегда сверху над своей точкой — так читается ровнее.
-            const goesDown = i % 2 === 0
+            const lines = wrapLabel(step.title, 13)
+            const isLast = i === steps.length - 1
             const labelY = -24
-            const r = week.status === 'current' ? 10 : 8
+            const r = step.status === 'current' ? 10 : 8
 
             return (
-              <g key={week.number} className="route-node">
-                {week.status === 'current' && <circle cx={p.x} cy={p.y} r={r + 6} className="route-node-glow" />}
-                <circle cx={p.x} cy={p.y} r={isLast ? r + 2 : r} className={`route-node-dot ${week.status} ${isLast ? 'finish' : ''}`} />
+              <g key={step.number} className="route-node">
+                {step.status === 'current' && <circle cx={p.x} cy={p.y} r={r + 6} className="route-node-glow" />}
+                <circle cx={p.x} cy={p.y} r={isLast ? r + 2 : r} className={`route-node-dot ${step.status} ${isLast ? 'finish' : ''}`} />
                 {isLast ? (
                   <text x={p.x} y={p.y + 3.5} textAnchor="middle" fontSize="10">🏁</text>
-                ) : week.status === 'completed' ? (
+                ) : step.status === 'completed' ? (
                   <path d={`M ${p.x - 3.5} ${p.y} l 2.5 2.5 l 5 -5`} className="route-node-check" />
                 ) : (
-                  <text x={p.x} y={p.y + 3.5} textAnchor="middle" className="route-node-number">{week.number}</text>
+                  <text x={p.x} y={p.y + 3.5} textAnchor="middle" className="route-node-number">{step.number}</text>
                 )}
                 {lines.map((ln, li) => (
                   <text key={li} x={p.x} y={p.y + labelY + li * 10} textAnchor="middle" className="route-node-label">{ln}</text>
                 ))}
                 <text x={p.x} y={p.y + labelY - 11} textAnchor="middle" className="route-node-sub">
-                  {isLast ? 'финиш' : `Нед. ${week.number}`}
+                  {isLast ? 'финиш' : `Нед. ${step.number}`}
                 </text>
               </g>
             )
@@ -241,11 +252,10 @@ function RoutePage({
         </svg>
       </section>
 
-      {currentWeek && (
+      {currentStep && (
         <section className="current-week-card">
           <div className="current-week-label">Текущая неделя</div>
-          <h2>Неделя {currentWeek.number} — {currentWeek.title}</h2>
-          <p>{currentWeek.description}</p>
+          <h2>Неделя {currentStep.number} — {currentStep.title}</h2>
         </section>
       )}
 
@@ -253,12 +263,12 @@ function RoutePage({
         <div className="section-heading">
           <div>
             <h2>Задания недели</h2>
-            <p>Выполнено {completedTasks} из {tasks.length}</p>
+            <p>Выполнено {completedTasks} из {currentTasks.length}</p>
           </div>
         </div>
 
         <div className="tasks-list">
-          {tasks.map((task) => (
+          {currentTasks.map((task) => (
             <div className="task-card" key={task.id}>
               <button
                 className={`task-check ${task.completed ? 'checked' : ''}`}
@@ -291,8 +301,13 @@ function RoutePage({
                 )}
 
                 {task.allowPhotos && (
-                  <button className="upload-button" onClick={() => openPhotoPicker(task.id)}>
-                    📷 Добавить фото{photoCounts[task.id] ? ` (${photoCounts[task.id]})` : ''}
+                  <button
+                    className="upload-button"
+                    onClick={() => openPhotoPicker(task.id)}
+                    disabled={task.photoLimit > 0 && task.photoCount >= task.photoLimit}
+                  >
+                    📷 Добавить фото
+                    {task.photoLimit > 0 ? ` (${task.photoCount || 0}/${task.photoLimit})` : task.photoCount ? ` (${task.photoCount})` : ''}
                   </button>
                 )}
 
@@ -435,7 +450,7 @@ function MaterialsPage({ materials }) {
           <div className="material-card" key={material.id}>
             <div className="material-icon">📄</div>
             <div className="material-content">
-              <div className="material-session">{material.session} · {material.date}</div>
+              <div className="material-session">{material.session}{material.date ? ` · ${material.date}` : ''}</div>
               <div className="material-title">{material.title}</div>
               <div className="material-type">{material.type}</div>
             </div>
@@ -452,7 +467,7 @@ function MaterialsPage({ materials }) {
 }
 
 function ProfilePage({ tasks, profile, photoUrl }) {
-  const completedTasks = tasks.filter((task) => task.completed).length
+  const completedTasks = tasks.filter((task) => task.completed)
 
   return (
     <>
@@ -486,10 +501,10 @@ function ProfilePage({ tasks, profile, photoUrl }) {
       <section className="progress-card">
         <div className="progress-header">
           <span>Прогресс практикума</span>
-          <strong>{profile.currentWeek} из 4 недель</strong>
+          <strong>{profile.currentStep} из 4 недель</strong>
         </div>
         <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${(profile.currentWeek / 4) * 100}%` }}></div>
+          <div className="progress-fill" style={{ width: `${(profile.currentStep / 4) * 100}%` }}></div>
         </div>
         <div className="progress-text">Ты уже начала свой путь. Продолжай.</div>
       </section>
@@ -497,22 +512,20 @@ function ProfilePage({ tasks, profile, photoUrl }) {
       <section className="completed-card">
         <div className="completed-header">
           <h2>Выполненные задания</h2>
-          <span>{completedTasks}</span>
+          <span>{completedTasks.length}</span>
         </div>
 
-        {tasks
-          .filter((task) => task.completed)
-          .map((task) => (
-            <div className="completed-task" key={task.id}>
-              <div className="completed-check">✓</div>
-              <div>
-                <div className="completed-task-title">{task.title}</div>
-                <div className="completed-task-info">Ответ сохранён</div>
-              </div>
+        {completedTasks.map((task) => (
+          <div className="completed-task" key={task.id}>
+            <div className="completed-check">✓</div>
+            <div>
+              <div className="completed-task-title">{task.title}</div>
+              <div className="completed-task-info">Ответ сохранён</div>
             </div>
-          ))}
+          </div>
+        ))}
 
-        {completedTasks === 0 && <div className="empty-state">Здесь появятся выполненные задания.</div>}
+        {completedTasks.length === 0 && <div className="empty-state">Здесь появятся выполненные задания.</div>}
       </section>
     </>
   )
@@ -522,10 +535,10 @@ function App() {
   const [activeNav, setActiveNav] = useState('route')
   const [loading, setLoading] = useState(true)
 
-  const [clientId, setClientId] = useState(null)
+  const [participantId, setParticipantId] = useState(null)
   const [profile, setProfile] = useState(initialProfile)
   const [photoUrl, setPhotoUrl] = useState(null)
-  const [weeks, setWeeks] = useState(initialWeeks)
+  const [steps, setSteps] = useState(initialSteps)
   const [tasks, setTasks] = useState(initialTasks)
   const [materials, setMaterials] = useState(initialMaterials)
   const [session, setSession] = useState(initialSession)
@@ -540,39 +553,43 @@ function App() {
 
     async function boot() {
       const telegramId = getTelegramId()
-      const data = await loadClientData(telegramId)
+      await authenticateWithTelegram() // проверяет initData на сервере до похода в базу
+      const data = await loadParticipantData(telegramId)
 
       if (data) {
-        const { client, weeks: dbWeeks, materials: dbMaterials, reflection } = data
+        const { participant, routeSteps, tasks: dbTasks, sessions, materials: dbMaterials, reflection } = data
 
-        setClientId(client.id)
+        setParticipantId(participant.id)
         setProfile({
-          name: client.name,
-          age: client.age,
-          goal: client.goal || 'Будет определена вместе с психологом',
-          professionalRequest: client.professional_request,
-          currentWeek: client.current_week,
+          name: participant.name,
+          age: participant.age,
+          goal: participant.goal || 'Будет определена вместе с психологом',
+          initialSituation: participant.initial_situation || '',
+          professionalRequest: participant.professional_request || 'Будет определён вместе с психологом',
+          currentStep: participant.current_step || 1,
         })
 
-        if (dbWeeks.length) {
-          setWeeks(dbWeeks.map((w) => ({
-            number: w.number,
-            title: w.title,
-            description: w.description,
-            status: w.status,
-          })))
+        if (routeSteps.length) {
+          setSteps(routeSteps.map((s) => ({ number: s.step_number, title: s.title, status: s.status })))
+        }
 
-          const current = dbWeeks.find((w) => w.status === 'current') || dbWeeks[0]
+        if (dbTasks.length) {
           setTasks(
-            (current.tasks || []).map((t) => ({
-              id: t.id,
-              title: t.title,
-              description: t.description,
-              completed: t.completed,
-              answer: t.answer || '',
-              allowText: t.allow_text,
-              allowPhotos: t.allow_photos,
-            }))
+            dbTasks.map((t) => {
+              const submission = t.task_submissions?.[0]
+              return {
+                id: t.id,
+                routeStepNumber: routeSteps.find((s) => s.id === t.route_step_id)?.step_number,
+                title: t.title,
+                description: t.description,
+                completed: t.completed,
+                answer: submission?.text_answer || '',
+                allowText: t.allow_text,
+                allowPhotos: t.allow_photos,
+                photoLimit: t.photo_limit || 0,
+                photoCount: submission?.task_photos?.length || 0,
+              }
+            })
           )
         }
 
@@ -580,28 +597,39 @@ function App() {
           setMaterials(
             dbMaterials.map((m) => ({
               id: m.id,
-              session: m.session_label,
-              date: m.session_date,
+              session: m.sessions ? `Сессия ${m.sessions.session_number}` : 'Общие материалы',
+              date: m.sessions?.session_date
+                ? new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(new Date(m.sessions.session_date))
+                : null,
               title: m.title,
-              type: m.type,
+              type: m.file_type || 'Документ',
             }))
           )
         }
 
-        setSession({
-          display: formatSessionDate(client.next_session_at) || initialSession.display,
-          format: client.next_session_format || initialSession.format,
-          link: client.next_session_link,
-        })
+        // Сессия, соответствующая текущему шагу маршрута (нумерация шагов
+        // и сессий совпадает 1:1 — раз в неделю созвон на каждом шаге).
+        const upcomingSession =
+          sessions.find((s) => s.session_number === participant.current_step) ||
+          sessions.find((s) => new Date(s.session_date) >= new Date()) ||
+          sessions[sessions.length - 1]
+
+        if (upcomingSession) {
+          setSession({
+            display: formatSessionDateTime(upcomingSession.session_date, upcomingSession.session_time) || initialSession.display,
+            format: 'Онлайн • Zoom',
+            link: upcomingSession.zoom_url,
+          })
+        }
 
         if (reflection) {
-          setMood(reflection.mood)
-          setResource(reflection.resource)
+          setMood(reflection.wellbeing)
+          setResource(reflection.resource_level)
           setReflectionSaved(true)
         }
       }
-      // Если data === null (Supabase не настроен или клиент ещё не заведён),
-      // просто остаёмся на моковых данных, объявленных выше.
+      // Если data === null (Supabase не настроен, проверка Telegram не
+      // прошла, или участник ещё не заведён), остаёмся на моковых данных.
 
       setLoading(false)
     }
@@ -615,10 +643,10 @@ function App() {
 
     return (
       <RoutePage
-        weeks={weeks}
+        steps={steps}
         tasks={tasks}
         setTasks={setTasks}
-        clientId={clientId}
+        participantId={participantId}
         mood={mood}
         setMood={setMood}
         resource={resource}
