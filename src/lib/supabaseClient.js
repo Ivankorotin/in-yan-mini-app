@@ -14,3 +14,18 @@ if (!supabase) {
     'Приложение работает на локальных моковых данных без сохранения.'
   )
 }
+
+// После успешной проверки initData (см. telegramAuth.js) сюда кладётся
+// отдельный клиент с токеном пользователя — все запросы через него
+// проходят Row Level Security как "свой" клиент, а не анонимный доступ.
+let authedClient = null
+
+export function setAuthedClient(client) {
+  authedClient = client
+}
+
+// Функции в api.js должны брать клиента отсюда, а не напрямую `supabase` —
+// так они всегда используют самый защищённый доступ, какой есть на данный момент.
+export function getActiveClient() {
+  return authedClient || supabase
+}
