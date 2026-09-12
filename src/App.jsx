@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { supabase } from './lib/supabaseClient'
 import { getTelegramId, getTelegramPhotoUrl, initTelegramApp } from './lib/telegram'
 import { authenticateWithTelegram } from './lib/telegramAuth'
 import {
@@ -546,6 +545,7 @@ function App() {
   const [mood, setMood] = useState(null)
   const [resource, setResource] = useState(null)
   const [reflectionSaved, setReflectionSaved] = useState(false)
+  const [debugNote, setDebugNote] = useState(null)
 
   useEffect(() => {
     initTelegramApp()
@@ -553,10 +553,23 @@ function App() {
 
     async function boot() {
       const telegramId = getTelegramId()
-      await authenticateWithTelegram() // проверяет initData на сервере до похода в базу
+      const auth = await authenticateWithTelegram() // проверяет initData на сервере до похода в базу
+
+      const notes = {
+        'no-supabase': 'Supabase не настроен (нет VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY) — работаем на демо-данных.',
+        'no-init-data': 'Похоже, приложение открыто не через кнопку меню бота — Telegram не передал данные для проверки.',
+        'function-error': `Проверка Telegram не прошла: ${auth.message || 'см. логи функции telegram-auth в Supabase'}.`,
+      }
+      if (auth.reason !== 'ok') setDebugNote(notes[auth.reason])
+
       const data = await loadParticipantData(telegramId)
 
+      if (!data && auth.reason === 'ok') {
+        setDebugNote('Проверка Telegram прошла, но участник ещё не найден в базе — заведите маршрут через supabase/add_test_participant.sql.')
+      }
+
       if (data) {
+        setDebugNote(null)
         const { participant, routeSteps, tasks: dbTasks, sessions, materials: dbMaterials, reflection } = data
 
         setParticipantId(participant.id)
@@ -670,10 +683,8 @@ function App() {
         </div>
       </header>
 
-      {!supabase && (
-        <div className="dev-banner">
-          Supabase не настроен — работаем на демо-данных, ничего не сохраняется. См. .env.example.
-        </div>
+      {debugNote && !loading && (
+        <div className="dev-banner">{debugNote}</div>
       )}
 
       <main>{loading ? <p className="page-subtitle">Загрузка…</p> : renderPage()}</main>
