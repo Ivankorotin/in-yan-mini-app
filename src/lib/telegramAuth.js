@@ -6,16 +6,16 @@ import { getRawInitData } from './telegram'
 // дальше все запросы к Supabase идут от имени проверенного клиента,
 // и Row Level Security пускает его только к его собственным данным.
 //
-// Возвращает telegram_id проверенного пользователя или null, если
-// проверка невозможна (нет Supabase, initData, или сервер её отклонил) —
-// в этом случае приложение остаётся на локальных моковых данных.
+// Возвращает { participantId, reason } — participantId есть только
+// при reason === 'ok'. reason нужен для диагностики на экране,
+// без него сложно понять, на каком шаге что-то пошло не так.
 export async function authenticateWithTelegram() {
-  if (!supabase) return null
+  if (!supabase) return { participantId: null, reason: 'no-supabase' }
 
   const initData = getRawInitData()
   if (!initData) {
     console.warn('[in-yan] Нет initData — похоже, приложение открыто не через Telegram.')
-    return null
+    return { participantId: null, reason: 'no-init-data' }
   }
 
   const { data, error } = await supabase.functions.invoke('telegram-auth', {
@@ -24,7 +24,8 @@ export async function authenticateWithTelegram() {
 
   if (error || !data?.token) {
     console.error('[in-yan] Проверка Telegram не прошла:', error || data)
-    return null
+    const message = error?.message || data?.error || 'неизвестная ошибка'
+    return { participantId: null, reason: 'function-error', message }
   }
 
   const url = import.meta.env.VITE_SUPABASE_URL
@@ -34,5 +35,5 @@ export async function authenticateWithTelegram() {
   })
 
   setAuthedClient(authedClient)
-  return data.client_id
+  return { participantId: data.client_id, reason: 'ok' }
 }
