@@ -110,6 +110,17 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
+    // Проверяем сразу, а не даём функции упасть с непонятным "shutdown" в логах —
+    // так на экране приложения будет видно точное имя недостающей переменной.
+    const missing = []
+    if (!BOT_TOKEN) missing.push('TELEGRAM_BOT_TOKEN')
+    if (!JWT_SECRET) missing.push('JWT_SIGNING_SECRET')
+    if (!SUPABASE_URL) missing.push('SUPABASE_URL')
+    if (!SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY')
+    if (missing.length) {
+      return json({ error: `Не заданы переменные окружения: ${missing.join(', ')}` }, 500)
+    }
+
     const { initData } = await req.json()
     if (!initData) return json({ error: 'initData required' }, 400)
 
@@ -142,6 +153,6 @@ Deno.serve(async (req) => {
     return json({ token, client_id: clientId })
   } catch (err) {
     console.error('[telegram-auth]', err)
-    return json({ error: 'internal error' }, 500)
+    return json({ error: `internal error: ${err?.message || String(err)}` }, 500)
   }
 })
