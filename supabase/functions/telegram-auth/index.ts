@@ -15,7 +15,7 @@
 import { create, getNumericDate } from 'https://deno.land/x/djwt@v3.0.2/mod.ts'
 
 const BOT_TOKEN = Deno.env.get('TELEGRAM_BOT_TOKEN')!
-const JWT_SECRET = Deno.env.get('SUPABASE_JWT_SECRET')!
+const JWT_SECRET = Deno.env.get('JWT_SIGNING_SECRET')! // имя без префикса SUPABASE_ — он зарезервирован
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
