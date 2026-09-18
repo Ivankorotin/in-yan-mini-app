@@ -583,7 +583,12 @@ function App() {
         })
 
         if (routeSteps.length) {
-          setSteps(routeSteps.map((s) => ({ number: s.step_number, title: s.title, status: s.status })))
+          setSteps(routeSteps.map((s) => ({
+            number: s.step_number,
+            title: s.title,
+            // В базе шаг называется "upcoming", в интерфейсе — "future"
+            status: s.status === 'upcoming' ? 'future' : s.status,
+          })))
         }
 
         if (dbTasks.length) {
