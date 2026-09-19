@@ -44,15 +44,11 @@ button {
   gap: 12px;
 }
 
-.logo-mark-a {
-  fill: #55745c;
-  opacity: 0.88;
-}
-
-.logo-mark-b {
-  fill: #c89b25;
-  opacity: 0.88;
-  mix-blend-mode: multiply;
+.logo-mark {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .logo-text {
@@ -91,7 +87,7 @@ button {
 .route-card {
   background: #ffffff;
   border-radius: 28px;
-  padding: 22px 18px 16px;
+  padding: 20px 18px 12px;
   box-shadow: 0 4px 20px rgba(60, 65, 55, 0.06);
 }
 
@@ -115,6 +111,7 @@ button {
   stroke: #55745c;
   stroke-width: 2.5;
   stroke-linecap: round;
+  stroke-dasharray: 1, 9;
 }
 
 .route-node-glow {
@@ -142,11 +139,9 @@ button {
 }
 
 .route-node-dot.finish {
-  stroke-width: 2.4;
-}
-
-.route-node-dot.finish.future {
+  fill: #ffffff;
   stroke: #c89b25;
+  stroke-width: 2.4;
 }
 
 .route-node-check {
@@ -475,42 +470,60 @@ button {
   margin-top: 4px;
 }
 
-/* ---------- Ресурс и факторы (рефлексия) ---------- */
+/* ---------- Ресурс (шкала 1–5) и факторы (рефлексия) ---------- */
 .resource-question {
   margin-top: 4px;
 }
 
-.resource-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.resource-scale {
   margin-bottom: 20px;
 }
 
-.resource-item {
-  border: 1.5px solid #e3e0d6;
+.resource-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 5px;
+  outline: none;
+  margin: 6px 0 10px;
+  background: linear-gradient(90deg, #c9b7a6, #d8c48c, #cdd08c, #a9c48c, #55745c);
+}
+
+.resource-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   background: #fff;
-  border-radius: 14px;
-  padding: 8px 10px;
-  font-size: 11px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
+  border: 3px solid #55745c;
   cursor: pointer;
-  flex: 1;
-  min-width: 62px;
-  color: #62675f;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.resource-item span {
-  font-size: 16px;
+.resource-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #55745c;
+  cursor: pointer;
 }
 
-.resource-item.selected {
-  border-color: #55745c;
-  background: #eaf0ea;
+.resource-scale-value {
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
   color: #35502e;
+  margin-bottom: 6px;
+}
+
+.resource-scale-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9a9e97;
 }
 
 .factor-list {
