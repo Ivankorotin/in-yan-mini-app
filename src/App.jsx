@@ -63,18 +63,6 @@ const initialSession = {
   link: null,
 }
 
-// Логотип: две мягко пересекающиеся окружности — символ двоих,
-// идущих друг другу навстречу. Простой, не завязан на конкретный
-// эмодзи-набор, легко перекрашивается под любую палитру.
-function LogoMark() {
-  return (
-    <svg className="logo-mark" viewBox="0 0 40 40" width="36" height="36">
-      <circle cx="16" cy="20" r="12" className="logo-mark-a" />
-      <circle cx="24" cy="20" r="12" className="logo-mark-b" />
-    </svg>
-  )
-}
-
 function formatSessionDateTime(dateStr, timeStr) {
   if (!dateStr) return null
   const d = new Date(timeStr ? `${dateStr}T${timeStr}` : dateStr)
@@ -205,7 +193,9 @@ function RoutePage({
     }
   }
 
-  const routePoints = buildRoutePoints(steps.length)
+  // 4 недели + отдельная точка-финиш = 5 точек на карте.
+  const routePoints = buildRoutePoints(steps.length + 1, { baseY: 58, amplitude: 14 })
+  const finishPoint = routePoints[routePoints.length - 1]
   const pathAll = buildRouteCurve(routePoints)
   const currentIdx = steps.findIndex((s) => s.status === 'current')
   const solidCount = currentIdx === -1 ? steps.length : currentIdx + 1
@@ -217,24 +207,21 @@ function RoutePage({
       <p className="page-subtitle">4 недели для гармонизации отношений</p>
 
       <section className="route-card">
-        <svg className="route-svg" viewBox="0 0 320 190">
+        <svg className="route-svg" viewBox="0 0 320 100">
           <path d={pathAll} className="route-path-base" />
           {pathSolid && <path d={pathSolid} className="route-path-progress" />}
 
           {steps.map((step, i) => {
             const p = routePoints[i]
             const lines = wrapLabel(step.title, 13)
-            const isLast = i === steps.length - 1
-            const labelY = -24
+            const labelY = -22
             const r = step.status === 'current' ? 10 : 8
 
             return (
               <g key={step.number} className="route-node">
                 {step.status === 'current' && <circle cx={p.x} cy={p.y} r={r + 6} className="route-node-glow" />}
-                <circle cx={p.x} cy={p.y} r={isLast ? r + 2 : r} className={`route-node-dot ${step.status} ${isLast ? 'finish' : ''}`} />
-                {isLast ? (
-                  <text x={p.x} y={p.y + 3.5} textAnchor="middle" fontSize="10">🏁</text>
-                ) : step.status === 'completed' ? (
+                <circle cx={p.x} cy={p.y} r={r} className={`route-node-dot ${step.status}`} />
+                {step.status === 'completed' ? (
                   <path d={`M ${p.x - 3.5} ${p.y} l 2.5 2.5 l 5 -5`} className="route-node-check" />
                 ) : (
                   <text x={p.x} y={p.y + 3.5} textAnchor="middle" className="route-node-number">{step.number}</text>
@@ -243,11 +230,17 @@ function RoutePage({
                   <text key={li} x={p.x} y={p.y + labelY + li * 10} textAnchor="middle" className="route-node-label">{ln}</text>
                 ))}
                 <text x={p.x} y={p.y + labelY - 11} textAnchor="middle" className="route-node-sub">
-                  {isLast ? 'финиш' : `Нед. ${step.number}`}
+                  неделя {step.number}
                 </text>
               </g>
             )
           })}
+
+          <g className="route-node">
+            <circle cx={finishPoint.x} cy={finishPoint.y} r={10} className="route-node-dot finish" />
+            <text x={finishPoint.x} y={finishPoint.y + 3.5} textAnchor="middle" fontSize="10">🏁</text>
+            <text x={finishPoint.x} y={finishPoint.y - 22} textAnchor="middle" className="route-node-label">Финиш</text>
+          </g>
         </svg>
       </section>
 
@@ -342,8 +335,8 @@ function RoutePage({
       </section>
 
       <section className="reflection-card">
-        <h2 className="reflection-title">Ежедневная рефлексия</h2>
-        <div className="reflection-question">Как ты себя чувствуешь сегодня?</div>
+        <h2 className="reflection-title">Еженедельная рефлексия</h2>
+        <div className="reflection-question">Как ты себя чувствуешь на этой неделе?</div>
 
         <div className="mood-list">
           {[
@@ -372,30 +365,30 @@ function RoutePage({
           ))}
         </div>
 
-        <div className="reflection-question resource-question">Сколько у тебя сегодня ресурса?</div>
-        <div className="resource-list">
-          {[
-            ['🪫', 'Почти нет'],
-            ['🔋', 'Мало'],
-            ['🔋🔋', 'Средне'],
-            ['🔋🔋🔋', 'Много'],
-            ['🔋🔋🔋🔋', 'Очень много'],
-          ].map(([icon, label], index) => (
-            <button
-              className={`resource-item ${resource === index ? 'selected' : ''}`}
-              key={label}
-              onClick={() => {
-                setResource(index)
-                setReflectionSaved(false)
-              }}
-            >
-              <span>{icon}</span>
-              <small>{label}</small>
-            </button>
-          ))}
+        <div className="reflection-question resource-question">Сколько у тебя ресурса на этой неделе?</div>
+        <div className="resource-scale">
+          <input
+            type="range"
+            min="1"
+            max="5"
+            step="1"
+            value={resource ?? 3}
+            className="resource-slider"
+            onChange={(e) => {
+              setResource(Number(e.target.value))
+              setReflectionSaved(false)
+            }}
+          />
+          <div className="resource-scale-value">
+            {resource || 3} — {['', 'ресурса нет', 'мало', 'средне', 'много ресурса', 'полон сил'][resource || 3]}
+          </div>
+          <div className="resource-scale-ends">
+            <span>1 · ресурса нет</span>
+            <span>5 · полон сил</span>
+          </div>
         </div>
 
-        <div className="reflection-question">Что сегодня больше всего повлияло на твоё состояние?</div>
+        <div className="reflection-question">Что на этой неделе больше всего повлияло на твоё состояние?</div>
         <div className="factor-list">
           {[
             ['❤️', 'Отношения'],
@@ -680,10 +673,10 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="logo">
-          <LogoMark />
+          <img src="/logo.png" alt="Инь Янь" className="logo-mark" />
           <div className="logo-text">
-            <div className="logo-title">Инь Ян</div>
-            <div className="logo-tagline">практикум для пар</div>
+            <div className="logo-title">Инь Янь</div>
+            <div className="logo-tagline">практикум по отношениям с личным сопровождением</div>
           </div>
         </div>
       </header>
