@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" preserveAspectRatio="xMidYMax slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f7f0e4"/>
+      <stop offset="100%" stop-color="#f2ede0"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="82%" cy="18%" r="30%">
+      <stop offset="0%" stop-color="#f6d9a8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#f6d9a8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="800" height="420" fill="url(#sky)"/>
+  <rect x="0" y="0" width="800" height="420" fill="url(#sun)"/>
+
+  <!-- дальний слой холмов -->
+  <path d="M0,230 C120,190 220,215 320,195 C430,173 520,205 620,185 C700,170 760,190 800,180 L800,420 L0,420 Z"
+        fill="#c9d6cf" opacity="0.55"/>
+
+  <!-- средний слой -->
+  <path d="M0,275 C100,250 200,270 300,250 C400,230 480,262 580,245 C670,230 730,255 800,240 L800,420 L0,420 Z"
+        fill="#a9c0ab" opacity="0.55"/>
+
+  <!-- ближний слой, потемнее и позеленее -->
+  <path d="M0,330 C110,305 210,325 310,308 C410,290 500,320 600,305 C690,292 740,312 800,300 L800,420 L0,420 Z"
+        fill="#7fa07f" opacity="0.45"/>
+
+  <!-- река/озеро внизу -->
+  <path d="M0,395 C140,375 260,400 400,385 C540,370 660,392 800,378 L800,420 L0,420 Z"
+        fill="#cfe0da" opacity="0.5"/>
+</svg>
