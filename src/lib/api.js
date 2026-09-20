@@ -165,3 +165,13 @@ export async function saveReflection(participantId, { wellbeing, resource_level,
 
   if (error) console.error('[in-yan] Не удалось сохранить рефлексию:', error)
 }
+
+export async function acceptRules(participantId) {
+  const client = getActiveClient()
+  if (!client) return
+  const { error } = await client
+    .from('participants')
+    .update({ rules_accepted_at: new Date().toISOString() })
+    .eq('id', participantId)
+  if (error) console.error('[in-yan] Не удалось сохранить согласие с правилами:', error)
+}
