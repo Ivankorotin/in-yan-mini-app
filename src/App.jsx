@@ -7,6 +7,7 @@ import {
   saveTaskAnswer as apiSaveTaskAnswer,
   uploadTaskPhoto as apiUploadTaskPhoto,
   saveReflection as apiSaveReflection,
+  acceptRules as apiAcceptRules,
 } from './lib/api'
 
 const initialSteps = [
@@ -61,6 +62,181 @@ const initialSession = {
   display: '10 сентября в 19:00',
   format: 'Онлайн • Zoom',
   link: null,
+}
+
+// Простые схематичные чёрно-белые иконки для правил участия —
+// каждая раскрывает суть своего пункта, без внешних иконок-наборов.
+const RuleIcons = {
+  shield: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  target: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4.5" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+  calendar: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="3.5" y="5" width="17" height="15" rx="2" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" strokeLinecap="round" />
+    </svg>
+  ),
+  people: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="9" cy="9" r="3" />
+      <circle cx="16" cy="10.5" r="2.3" />
+      <path d="M4 20c0-3 2.5-5 5-5s5 2 5 5" strokeLinecap="round" />
+      <path d="M14.5 15.3c2 .2 3.5 1.9 3.5 4.2" strokeLinecap="round" />
+    </svg>
+  ),
+  clock: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  lock: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="5" y="10.5" width="14" height="9.5" rx="2" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" strokeLinecap="round" />
+      <circle cx="12" cy="15" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+  chat: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M4 5.5h16v10H9l-4 3.5v-3.5H4z" strokeLinejoin="round" />
+    </svg>
+  ),
+  flag: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <path d="M6 3.5v17" strokeLinecap="round" />
+      <path d="M6 4l6 2-6 2M12 6l6 2-6 2" strokeLinejoin="round" />
+    </svg>
+  ),
+}
+
+const RULES_SECTIONS = [
+  {
+    icon: 'shield',
+    title: '1. Ответственность за результат',
+    body: [
+      'Практикум не предполагает гарантированного результата в отношениях. Изменения зависят не только от работы на сессиях, но и от решений и действий самого клиента.',
+      'Клиент самостоятельно несёт ответственность за свои решения, действия и изменения в своей жизни.',
+    ],
+  },
+  {
+    icon: 'target',
+    title: '2. Желаемый результат практикума',
+    body: [
+      'В начале работы мы совместно формулируем желаемый результат практикума.',
+      'При этом цель (точку В) определяет сам клиент — именно он решает, к каким изменениям хочет прийти в своих отношениях.',
+      'Задачи семейного психолога как сопровождающего:',
+    ],
+    list: [
+      'помогать исследовать ситуацию',
+      'способствовать устранению внутренних барьеров и ограничений',
+      'способствовать разрешению внутриличностного конфликта (при его наличии)',
+      'замечать важное, находя новые возможности и способы действий, которые могут приблизить клиента к выбранному им результату',
+    ],
+  },
+  {
+    icon: 'calendar',
+    title: '3. Как проходит практикум',
+    body: [
+      'Практикум состоит из 5 индивидуальных онлайн-сессий, заданий между встречами и самостоятельной работы клиента.',
+      'Содержание заданий и направление работы определяются с учётом индивидуальной ситуации и запроса клиента.',
+      'Для получения результата важно не только присутствовать на сессиях, но и уделять внимание заданиям и своим наблюдениям между встречами.',
+    ],
+  },
+  {
+    icon: 'people',
+    title: '4. Личное участие клиента',
+    body: [
+      'Практикум — это совместная работа. Психолог со своей стороны предоставляет профессиональное психологическое сопровождение, помогает анализировать ситуацию и искать новые возможности.',
+      'При этом клиент остаётся активным участником процесса: самостоятельно принимает решения, выбирает, что применять в своей жизни, и определяет темп собственных изменений.',
+    ],
+  },
+  {
+    icon: 'clock',
+    title: '5. Перенос онлайн-сессии',
+    body: [
+      'Перенос сессии возможен, если клиент предупреждает об этом не позднее чем за 2 дня до назначенного времени. В этом случае мы согласовываем новое время встречи.',
+      'Если отмена или перенос происходят менее чем за 2 дня до сессии, возможность повторного проведения этой сессии не предоставляется.',
+      'В случае непредвиденных обстоятельств или форс-мажора возможность переноса рассматривается индивидуально.',
+    ],
+  },
+  {
+    icon: 'lock',
+    title: '6. Конфиденциальность',
+    body: [
+      'Всё, чем клиент делится в рамках индивидуального сопровождения, рассматривается как конфиденциальная информация и не передаётся третьим лицам без согласия клиента, за исключением случаев, предусмотренных законодательством.',
+    ],
+  },
+  {
+    icon: 'chat',
+    title: '7. Обратная связь и взаимодействие между сессиями',
+    body: [
+      'Вопросы, связанные с выполнением заданий и материалами практикума, можно обсуждать на сессии.',
+      'При этом личное сопровождение не предполагает постоянной доступности психолога в мессенджерах. Вся работа с запросом происходит в рамках запланированных сессий и заданий.',
+    ],
+  },
+  {
+    icon: 'flag',
+    title: '8. Завершение практикума',
+    body: [
+      'Практикум завершается после прохождения запланированных сессий и выполнения индивидуального маршрута.',
+      'На завершающей сессии мы резюмируем выполненную работу, отмечаем произошедшие изменения и определяем дальнейшие возможности личностного роста.',
+      'После завершения практикума клиенту предлагается заполнить форму обратной связи из 8 вопросов.',
+    ],
+  },
+]
+
+function RulesModal({ onAccept }) {
+  return (
+    <div className="rules-overlay">
+      <div className="rules-modal">
+        <div className="rules-modal-header">
+          <h2>Правила участия в практикуме</h2>
+          <p>с личным сопровождением</p>
+        </div>
+
+        <div className="rules-modal-body">
+          {RULES_SECTIONS.map((section) => (
+            <div className="rules-section" key={section.title}>
+              <div className="rules-section-icon">{RuleIcons[section.icon]}</div>
+              <div className="rules-section-content">
+                <h3>{section.title}</h3>
+                {section.body.map((p, i) => (
+                  <p key={i}>{p}</p>
+                ))}
+                {section.list && (
+                  <ul>
+                    {section.list.map((li, i) => (
+                      <li key={i}>{li}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="rules-modal-footer">
+          <button className="rules-question-btn" onClick={() => window.open('https://t.me/ivankorotin', '_blank')}>
+            Есть вопрос
+          </button>
+          <button className="rules-accept-btn" onClick={onAccept}>
+            Принимаю
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function formatSessionDateTime(dateStr, timeStr) {
@@ -194,7 +370,7 @@ function RoutePage({
   }
 
   // 4 недели + отдельная точка-финиш = 5 точек на карте.
-  const routePoints = buildRoutePoints(steps.length + 1, { baseY: 58, amplitude: 14 })
+  const routePoints = buildRoutePoints(steps.length + 1, { baseY: 68, amplitude: 16 })
   const finishPoint = routePoints[routePoints.length - 1]
   const pathAll = buildRouteCurve(routePoints)
   const currentIdx = steps.findIndex((s) => s.status === 'current')
@@ -204,10 +380,9 @@ function RoutePage({
   return (
     <>
       <h1 className="page-title">Твой маршрут</h1>
-      <p className="page-subtitle">4 недели для гармонизации отношений</p>
 
       <section className="route-card">
-        <svg className="route-svg" viewBox="0 0 320 100">
+        <svg className="route-svg" viewBox="0 0 320 140">
           <path d={pathAll} className="route-path-base" />
           {pathSolid && <path d={pathSolid} className="route-path-progress" />}
 
@@ -229,7 +404,7 @@ function RoutePage({
                 {lines.map((ln, li) => (
                   <text key={li} x={p.x} y={p.y + labelY + li * 10} textAnchor="middle" className="route-node-label">{ln}</text>
                 ))}
-                <text x={p.x} y={p.y + labelY - 11} textAnchor="middle" className="route-node-sub">
+                <text x={p.x} y={p.y + r + 16} textAnchor="middle" className="route-node-sub">
                   неделя {step.number}
                 </text>
               </g>
@@ -240,6 +415,7 @@ function RoutePage({
             <circle cx={finishPoint.x} cy={finishPoint.y} r={10} className="route-node-dot finish" />
             <text x={finishPoint.x} y={finishPoint.y + 3.5} textAnchor="middle" fontSize="10">🏁</text>
             <text x={finishPoint.x} y={finishPoint.y - 22} textAnchor="middle" className="route-node-label">Финиш</text>
+            <text x={finishPoint.x} y={finishPoint.y + 26} textAnchor="middle" className="route-node-sub">финиш</text>
           </g>
         </svg>
       </section>
@@ -539,6 +715,7 @@ function App() {
   const [resource, setResource] = useState(null)
   const [reflectionSaved, setReflectionSaved] = useState(false)
   const [debugNote, setDebugNote] = useState(null)
+  const [showRules, setShowRules] = useState(false)
 
   useEffect(() => {
     initTelegramApp()
@@ -566,6 +743,7 @@ function App() {
         const { participant, routeSteps, tasks: dbTasks, sessions, materials: dbMaterials, reflection } = data
 
         setParticipantId(participant.id)
+        setShowRules(!participant.rules_accepted_at)
         setProfile({
           name: participant.name,
           age: participant.age,
@@ -669,8 +847,15 @@ function App() {
     )
   }
 
+  const handleAcceptRules = async () => {
+    setShowRules(false)
+    if (participantId) await apiAcceptRules(participantId)
+  }
+
   return (
     <div className="app">
+      {showRules && <RulesModal onAccept={handleAcceptRules} />}
+
       <header className="app-header">
         <div className="logo">
           <img src="/logo.png" alt="Инь Янь" className="logo-mark" />
