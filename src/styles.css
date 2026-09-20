@@ -85,9 +85,13 @@ button {
 }
 
 .route-card {
-  background: #ffffff;
+  background-color: #ffffff;
+  background-image: url('/route-bg.svg');
+  background-size: cover;
+  background-position: bottom center;
   border-radius: 28px;
-  padding: 20px 18px 12px;
+  padding: 20px 18px 28px;
+  min-height: 190px;
   box-shadow: 0 4px 20px rgba(60, 65, 55, 0.06);
 }
 
@@ -168,7 +172,8 @@ button {
 .route-node-sub {
   font-family: Arial, sans-serif;
   font-size: 8.5px;
-  fill: #9a9e97;
+  font-weight: 600;
+  fill: #4a4f46;
 }
 
 .session-card {
@@ -840,4 +845,135 @@ button {
   font-size: 13px;
   text-align: center;
   padding: 12px 0;
+}
+
+/* ---------- Правила участия (модалка при первом входе) ---------- */
+.rules-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 32, 28, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+}
+
+.rules-modal {
+  background: #f7f5f0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  border-radius: 26px 26px 0 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.rules-modal-header {
+  padding: 22px 22px 14px;
+  border-bottom: 1px solid #e7e3d8;
+}
+
+.rules-modal-header h2 {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  margin: 0 0 4px;
+}
+
+.rules-modal-header p {
+  margin: 0;
+  color: #8a8f85;
+  font-size: 12.5px;
+}
+
+.rules-modal-body {
+  overflow-y: auto;
+  padding: 16px 22px;
+  flex: 1;
+}
+
+.rules-section {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid #eeece2;
+}
+
+.rules-section:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.rules-section-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1.5px solid #ddd8c9;
+  color: #4a4f46;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rules-section-icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.rules-section-content h3 {
+  font-size: 14px;
+  margin: 2px 0 6px;
+  font-family: Georgia, serif;
+}
+
+.rules-section-content p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4a4f46;
+  margin: 0 0 8px;
+}
+
+.rules-section-content ul {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+
+.rules-section-content li {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4a4f46;
+  margin-bottom: 4px;
+}
+
+.rules-modal-footer {
+  display: flex;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid #e7e3d8;
+  background: #f7f5f0;
+  border-radius: 0 0 0 0;
+}
+
+.rules-question-btn {
+  flex: 1;
+  padding: 13px;
+  border-radius: 24px;
+  border: 1.5px solid #c8cec7;
+  background: transparent;
+  color: #4a4f46;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.rules-accept-btn {
+  flex: 1.4;
+  padding: 13px;
+  border-radius: 24px;
+  border: none;
+  background: #55745c;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13.5px;
 }
